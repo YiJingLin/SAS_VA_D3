@@ -5,9 +5,27 @@
 <head>
 <link rel="stylesheet" href="https://unpkg.com/bootstrap-material-design@4.1.1/dist/css/bootstrap-material-design.min.css" integrity="sha384-wXznGJNEXNG1NFsbm0ugrLFMQPWswR3lds2VeinahP8N0zJw9VWSopbjv2x7WCvX" crossorigin="anonymous">
 <style>
+	
+	@media all and (max-width: 500px) {
+		table {display: none;}
+		.img_body_container {width: 45%;}
+	}
+	@media all and (min-width: 500px) {
+		.img_body_container {width: 25%;}
+	}
 
 	text {
 	  font: 10px sans-serif;
+	}
+
+	.img_body_container {
+		display: inline-block;
+		position: relative;
+		/* width: 25%; */
+		/* padding-bottom: 100%; */
+		top:5%;
+		vertical-align: top;
+		overflow: hidden;
 	}
 	
 	#d3container {
@@ -20,15 +38,7 @@
 		overflow: hidden;
 	}
 	
-	.img_body_container {
-		display: inline-block;
-		position: relative;
-		width: 25%;
-		/* padding-bottom: 100%; */
-		top:5%;
-		vertical-align: top;
-		overflow: hidden;
-	}
+	
 	
 	.img_body {
 		max-width: 100%;
@@ -45,12 +55,13 @@
 		display: inline-block;
 		position: relative;
 		width: 45%;
-		height: 40vw; /* 0.4 * 60 */
+		height: 30vw ; /* 0.4 * 60 */
 		overflow: auto;  /* scrollable */
 	}
-	
+
 	table {
 		width:100%;
+		font-size:10px;
 	}
 	
 	
@@ -68,15 +79,6 @@
 	</div>
 	<div id="table_container" class="table_container">
 		<table id="table" class="table table-striped">
-			
-			<tr>
-			<!-- 
-			<th scope="col">編號</th>
-				<th scope="col">分類名稱</th>
-				<th scope="col">管路文字</th>
-				<th scope="col">天數</th>
-			</tr>
-			-->
 			 <!-- <tr>
 				<th scope="row">1</th>
 				<td>Maria Anders</td>
@@ -127,9 +129,9 @@
 
 	// d3.selectAll("div").selectAll("*").remove();
 
-	var nChannel = 0;
-	var FrontBodyChennelList = [];
-	var BackBodyChennelList = [];
+	var nChannel;
+	var existCoordinates;
+	var overlappedCoordinates;
 
 	function addChannelIcon(channelId, side, channelType, X, Y) { 
 		// side (bool): front:True, back:False 
@@ -188,7 +190,7 @@
 		return newId;
 	}
 
-	function addTableRow(channelId, channelType, typeName, channelText, day) {
+	function addTableRow(channelId, channelType, typeName, channelText, day, nTime) {
 
 		// create html table row element, then append back to table
 		var table = document.getElementById("table");
@@ -202,10 +204,10 @@
 
 		var newIconCol = document.createElement('th');
 		newIconCol.scope = "row";
-		newIconCol.style.width = "20%";
+		newIconCol.style.width = "12%";
 		var imgTag = document.createElement('img');
 		imgTag.src = './imgs/tag/' + channelType + '.png';
-		imgTag.style.width = "80%";
+		imgTag.style.width = "100%";
 		newIconCol.appendChild(imgTag);
 		newTableRow.appendChild(newIconCol);
 		
@@ -218,8 +220,14 @@
 		newTableRow.appendChild(newChannelTextCol);
 		
 		var newDayCol = document.createElement('td');
+		newDayCol.style.width = "20%";
 		newDayCol.innerText = day + " days";
 		newTableRow.appendChild(newDayCol);
+
+		var newNTimeCol = document.createElement('td');
+		newNTimeCol.style.width = "20%";
+		newNTimeCol.innerText = nTime + " time(s)";
+		newTableRow.appendChild(newNTimeCol);
 
 		// add event
 		newTableRow.addEventListener("click", function(){
@@ -245,6 +253,87 @@
 
 	}
 
+	function addOverlappedChannelIcon(coordinateCode, side, X, Y) { 
+		// side (bool): front:True, back:False 
+		// channelType (Int): 
+		// X (int): x/40  
+		// Y (int): y/72
+
+		// get parent element
+		if (side == "正面") {
+			// var container = document.getElementById('img_body_front_container');
+			var container = document.getElementById('tag_front_container');
+		} else {
+			// var container = document.getElementById('img_body_back_container');
+			var container = document.getElementById('tag_back_container');
+		}
+
+		// create new icon tag
+		var imgTag = document.createElement('img');
+		imgTag.classList.add("tag");
+		imgTag.id = "tag_" + coordinateCode;
+
+		// get icon source
+		imgTag.src = './imgs/tag/star.png';
+		
+		// coordinate (top-right of the original coordinate)
+		X = 100 * (X-2+2) / 40;
+		Y = 100 * (Y-2-2) / 72;
+		imgTag.style =  "left: " + X + "%; top: " + Y + "%; max-width: 8%;";
+		imgTag.alt = "hi";
+		// add event
+		imgTag.addEventListener("click", function(){
+
+			// rows
+			var rows = document.getElementsByTagName("tr");
+			for (var i =0; i< rows.length; i++){
+				rows[i].style.backgroundColor = "white";
+			}
+
+			for (var i =0; i<overlappedCoordinates[coordinateCode].length; i++){
+				var row_id = "row_" + overlappedCoordinates[coordinateCode][i]; 
+				var row = document.getElementById(row_id);
+				row.style.backgroundColor = "gray";
+			}
+			
+
+			// icons
+			var icons = document.getElementsByClassName("tag");
+			for (var i =0; i< icons.length; i++){
+				icons[i].style.opacity = "0.3";
+			}
+			var icon_id = "tag_" + coordinateCode; 
+			var icon = document.getElementById(icon_id);
+			icon.style.opacity = "1.0";
+		});
+
+		// finally, append to container
+		container.appendChild(imgTag);
+	}
+	
+
+	function checkAndAddChannelOverlapped(channelId, side, X, Y) {
+		var coordinateCode = 1000 * X + Y;
+		if (side == "反面") {
+			coordinateCode *= -1; // negative number
+		}
+		if (coordinateCode in existCoordinates) {
+			// coordinate not exist
+			if (!(coordinateCode in overlappedCoordinates)) {
+				// init overlapCoordinates list, for multiple row selected
+				overlappedCoordinates[coordinateCode] = [existCoordinates[coordinateCode]];
+
+				// init icon
+				addOverlappedChannelIcon(coordinateCode=coordinateCode, side=side, X=X, Y=Y);
+			}
+			overlappedCoordinates[coordinateCode].push(channelId);
+
+		} else {
+			// first time
+			existCoordinates[coordinateCode] = channelId;
+		}
+	}
+
 	
 
 	function addData(dataRow) {
@@ -263,7 +352,8 @@
 
 
 		addChannelIcon(channelId = channelId, side=side, channelType=channelType, X=X, Y=Y);
-		addTableRow(channelId = channelId, channelType=channelType, typeName=typeName, channelText=channelText, day=day);
+		addTableRow(channelId = channelId, channelType=channelType, typeName=typeName, channelText=channelText, day=day, nTime=nTime);
+		checkAndAddChannelOverlapped(channelId=channelId, side=side, X=X, Y=Y);
 	}	
 
 	// render male/female/child body images 
@@ -296,6 +386,12 @@
 
 	// clear all previous elements
 	function reset(){
+		//// parameters
+		nChannel = 0
+		existCoordinates = {};
+		overlappedCoordinates = {};
+
+		//// UI 
 		// front
 		var tag_front_container = document.getElementById('tag_front_container');
 		tag_front_container.innerHTML = '';
@@ -305,6 +401,14 @@
 		// table
 		var table = document.getElementById("table");
 		table.innerHTML = '';
+		
+		// table.innerHTML = 
+		// 	"<tr>" +
+		// 		"<th scope='col'>圖示</th>" +
+		// 		"<th scope='col'>管路文字</th>" +
+		// 		"<th scope='col'>管路天數</th>" +
+		// 		"<th scope='col'>插管次數</th>" +
+		// 	"</tr>";
 	}
 
 
@@ -383,7 +487,7 @@
 				'NG-Silicon(矽膠鼻胃管)', '鼻胃管', 9.0, '鼻子', '正面', 2, 20, 7]],
 		'columns': []};
 
-		renderChart(_testData_);
+		// renderChart(_testData_);
 
 	
 </script>
